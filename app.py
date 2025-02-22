@@ -6,6 +6,11 @@ from matplotlib.colors import Normalize
 from matplotlib.cm import ScalarMappable
 import os
 
+# Cache only the data loading
+@st.cache_data
+def load_county_data(county):
+    return pd.read_parquet(f"county_data/county_{county}")
+
 def deserialize_bytes(geometry_bytes):
     from shapely.wkb import loads
     return loads(geometry_bytes)
@@ -13,36 +18,29 @@ def deserialize_bytes(geometry_bytes):
 def get_lat_long(geometry):
     return geometry.xy[1][0], geometry.xy[0][0]
 
+# Removed caching from visualization generation
 def generate_viz(county):
     try:
-        lines = pd.read_parquet(f"county_data/county_{county}")
+        # Load only necessary columns
+        lines = load_county_data(county)[['geometry', 'osm_id', 'trips_volu']]
+        
+        # Process geometry in vectorized operations where possible
         lines['geometry'] = lines['geometry'].apply(deserialize_bytes)
         lines["lat"], lines["long"] = zip(*lines['geometry'].apply(get_lat_long))
         
-        # List to hold the line data for Pydeck
-        line_data = []
-
-        # Create the line data from the geometries
-        for line in lines['geometry']:
-            x, y = line.xy
-            x, y = np.array(x), np.array(y)
-            
-            # Prepare the coordinates for Pydeck
-            line_coords = [[a, b] for a, b in zip(x, y)] 
-            line_data.append(line_coords)
-
-        colors = []
-        lines["log_trips_volu"] = np.log(lines["trips_volu"]+1)
-        for trip_volume in lines["log_trips_volu"]:
-            # Normalize the 'trips_volu' to a color range
-            norm = Normalize(vmin=lines['log_trips_volu'].min(), vmax=lines['log_trips_volu'].max())
-            colormap = ScalarMappable(norm=norm, cmap="viridis")
-            color = colormap.to_rgba(trip_volume)[:3]
-            colors.append([int(c * 255) for c in color])
+        # Vectorize color calculation
+        log_trips = np.log1p(lines["trips_volu"])
+        norm = Normalize(vmin=log_trips.min(), vmax=log_trips.max())
+        colormap = ScalarMappable(norm=norm, cmap="viridis")
+        colors = (colormap.to_rgba(log_trips)[:, :3] * 255).astype(int).tolist()
+        
+        # Create line data more efficiently
+        line_data = [[[float(x), float(y)] for x, y in zip(*geom.xy)] 
+                    for geom in lines['geometry']]
 
         # Create DataFrame for the paths
         df = pd.DataFrame({
-            'path_id': list(lines["osm_id"]),
+            'path_id': lines["osm_id"],
             'path': line_data,
             'color': colors,
             'volume': lines["trips_volu"]
@@ -83,12 +81,16 @@ def generate_viz(county):
         return None
 
 def main():
+    st.set_page_config(layout="wide")  # Use wide mode
     st.title("Traffic Volume Visualization")
     
-    # Get available county files
-    county_files = [f for f in os.listdir("county_data") if f.startswith("county_")]
-    print(county_files)
-    counties = [int(f.split("_")[1]) for f in county_files]
+    # Cache the county list
+    @st.cache_data
+    def get_counties():
+        county_files = [f for f in os.listdir("county_data") if f.startswith("county_")]
+        return [int(f.split("_")[1]) for f in county_files]
+    
+    counties = get_counties()
     
     # Create dropdown for county selection
     selected_county = st.selectbox(
@@ -99,10 +101,10 @@ def main():
     
     # Generate and display visualization
     if selected_county:
-        st.write(f"Displaying traffic data for county {selected_county}")
-        deck = generate_viz(selected_county)
-        if deck:
-            st.pydeck_chart(deck)
+        with st.spinner(f'Loading data for county {selected_county}...'):
+            deck = generate_viz(selected_county)
+            if deck:
+                st.pydeck_chart(deck, use_container_width=True)
 
 if __name__ == "__main__":
     main()
