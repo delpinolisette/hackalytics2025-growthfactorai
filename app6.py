@@ -17,6 +17,20 @@ def load_fips_data():
 def load_county_data(county):
     return pd.read_parquet(f"county_data/county_{county}")
 
+def calculate_score(state, county, lat, lon):
+    """
+    Calculate score based on state, county, and coordinates.
+    Replace this with your actual score calculation logic.
+    """
+    try:
+        # This is a placeholder - replace with actual scoring logic
+        county_data = load_county_data(county)
+        # Add your scoring computation here
+        score = 0  # Replace with actual calculation
+        return f"{score:.2f}"
+    except Exception as e:
+        return "Error calculating score"
+
 def deserialize_bytes(geometry_bytes):
     from shapely.wkb import loads
     return loads(geometry_bytes)
@@ -27,7 +41,7 @@ def get_lat_long(geometry):
 def generate_viz(county, viz_type='path', marker_lat=None, marker_lon=None):
     try:
         # Load only necessary columns
-        lines = load_county_data(county)[['geometry', 'osm_id', 'trips_volu']]
+        lines = load_county_data(county)[['geometry', 'osm_id', 'trips_volu']]#.head(500)
         
         # Process geometry in vectorized operations
         lines['geometry'] = lines['geometry'].apply(deserialize_bytes)
@@ -154,9 +168,17 @@ def main():
     # Load FIPS data
     fips_df = load_fips_data()
     states = sorted(fips_df['State'].unique())
+
+    # Initialize session state variables
+    if 'score' not in st.session_state:
+        st.session_state.score = ""
+    if 'lat' not in st.session_state:
+        st.session_state.lat = ""
+    if 'lon' not in st.session_state:
+        st.session_state.lon = ""
     
     # Create columns for all controls in a single row
-    col1, col2, col3, col4, col5 = st.columns([1, 1, 1, 1, 1])
+    col1, col2, col3, col4, col5, col6 = st.columns([1, 1, 1, 1, 1, 1])
     
     with col1:
         selected_state = st.selectbox(
@@ -181,25 +203,60 @@ def main():
             options=['Path View', 'Heatmap'],
             index=0
         )
-    
-    with col4:
-        marker_lat = st.text_input("Latitude", value="", help="Enter latitude for marker (optional)")
-    
-    with col5:
-        marker_lon = st.text_input("Longitude", value="", help="Enter longitude for marker (optional)")
-    
-    # Convert coordinates to float if provided
-    try:
-        marker_lat = float(marker_lat) if marker_lat else None
-        marker_lon = float(marker_lon) if marker_lon else None
-    except ValueError:
-        st.error("Please enter valid numerical coordinates")
-        marker_lat, marker_lon = None, None
-    
+
     # Get the FIPS code for the selected county
     selected_county_fips = state_counties[
         state_counties['County'] == selected_county_name
     ]['FIPS County'].iloc[0]
+
+    def update_coordinates():
+
+        try:
+            if st.session_state.lat_input and st.session_state.lon_input:
+                st.session_state.lat = float(st.session_state.lat_input)
+                st.session_state.lon = float(st.session_state.lon_input)
+
+                print(selected_state,selected_county_fips,st.session_state.lat,st.session_state.lon)
+                st.session_state.score = calculate_score(
+                    selected_state,
+                    selected_county_fips,
+                    st.session_state.lat,
+                    st.session_state.lon
+                )
+        except ValueError:
+            st.error("Please enter valid numerical coordinates")
+    
+    with col4:
+        st.text_input(
+            "Latitude",
+            value=st.session_state.lat,
+            key="lat_input",
+            help="Enter latitude for marker (optional)",
+            on_change=update_coordinates
+        )
+    
+    with col5:
+        st.text_input(
+            "Longitude",
+            value=st.session_state.lon,
+            key="lon_input",
+            help="Enter longitude for marker (optional)",
+            on_change=update_coordinates
+        )
+    
+    with col6:
+        st.text_input(
+            "Score",
+            value=st.session_state.score,
+            disabled=True
+        )
+    
+    # Convert coordinates to float if provided
+    try:
+        marker_lat = float(st.session_state.lat) if st.session_state.lat else None
+        marker_lon = float(st.session_state.lon) if st.session_state.lon else None
+    except ValueError:
+        marker_lat, marker_lon = None, None
     
     # Generate and display visualization
     if selected_county_fips:
