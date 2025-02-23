@@ -5,12 +5,13 @@
 # gitignore template for Jupyter Notebooks
 # website: http://jupyter.org/
 
-*.xls
-
 county_data/*
 
+*.xls
+questions.md 
+
+*.docx
 *.parquet
-traffic_data_condensed.parquet
 
 *.csv
 processed_traffic_data.csv
