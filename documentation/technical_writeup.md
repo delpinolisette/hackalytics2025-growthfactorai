@@ -30,13 +30,13 @@ We also created a deployed Streamlit application to visualize visibility and imp
 
 We first ingested the geopandas version of the data. Our first improvement on the existing data to improve performance was to partition the dataset into state and counties.
 
-This partitioning proved to be crucial for the performance during data querying during exploration, data querying on the deployed Streamlit application, and the algorithm itself (which uses the county as the background for percentile scoring).
+This partitioning proved to be crucial for the performance during data querying during exploration, data querying on the deployed Streamlit application, and the algorithm itself (which visualizes at the county level and uses the county for the impression percentile scoring).
 
-Our next processing step, after discussing some simplifying assumptions with Raj and Tanner, was to remove pedestrian, cycleways, and footpaths from the data. In the OSM HIGHWAY column, a non-trivial amount of rows were classified as these. This analysis was restricted to impressions from car observers and traffic only.
+Our next processing step, after discussing some simplifying assumptions with Raj and Tanner, was to remove pedestrian, cycleways, and footpaths from the data. In the OSM HIGHWAY column, a handful of rows were classified as these. This analysis was restricted to impressions from car observers and traffic only.
 
 ## Initial EDA - Trip Volume Distribution
 
-In the initial EDA we found that trip volumes, a component of the impressions target variable, are unevenly distributed, with a mean of 5,930, a standard deviation of 9,331, and a median of 3,012. The max value was 232,019. This is backed up intuitively by this chart:
+In the initial EDA we found that trip volumes, a component of the impressions target variable, has a heavy right tail, with some of the summary statistics being a mean of 5,930, a standard deviation of 9,331, a median of 3,012; and a max value of 232,019. The distribution of trip volume is in the chart below:
 
 <!-- ![](../assets/2025-02-22-23-47-18.png) -->
 <img src="../assets/dist_trip_vol.png" width="80%" alt="description">
@@ -47,7 +47,7 @@ Our algorithm for determining impressions involves a kd-tree for range search, t
 
 ### KD Tree for Range Search
 
-With a function, we return all points contained in the data within a certain radius of an input point (store). We feed the county of the point (for partitioning and performance reasons) and radius to our `get_neighbors` function, convert measures of distance to radians, and compute the number of points within the (fractional miles)radius.
+The first step of the algorithm is to retrieve all points contained within a certain radius of an input point (store). We use the haversine as our distance metric.  The KD tree reduces the search time from linear to logarithmic complexity.  To further optimize performance, we restrict the search to only points within the same county.  
 
 Running an example for Middlesex County in Massachusetts, we get 14 points in the dataset within a quarter mile distance from the center of Cambridge Massachusetts (provided its latitude and longitude)
 
