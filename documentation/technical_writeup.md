@@ -3,9 +3,11 @@
   - [Data Preprocessing and Ingestion](#data-preprocessing-and-ingestion)
   - [Initial EDA - Trip Volume Distribution](#initial-eda---trip-volume-distribution)
   - [Algorithm](#algorithm)
+    - [KD Tree for Range Search](#kd-tree-for-range-search)
     - [Notes on `match_id`](#notes-on-match_id)
-    - [Note on identical rows except trip\_volume](#note-on-identical-rows-except-trip_volume)
+    - [Note on identical rows except `trip_volume`](#note-on-identical-rows-except-trip_volume)
     - [Zooming In on an Example:](#zooming-in-on-an-example)
+    - [Crux of the Algorithm - the Impressions Calculation](#crux-of-the-algorithm---the-impressions-calculation)
     - [The "County Percentile" Heuristic](#the-county-percentile-heuristic)
     - [Use the pre-made `county` Partitions!](#use-the-pre-made-county-partitions)
 - [Other Methods (Which Did Not Work)](#other-methods-which-did-not-work)
@@ -18,15 +20,15 @@
 
 ## Note on Final Product
 
-Please note that to arrive to our final product and algorithm, we had to throw out plenty of ideas and hundreds of lines of code. A systematic regression analysis that we tweaked to get some baseline activity proved that no simple combination of feature showed a truly promising $R^2$ on the impressions task. It also proved to be computationally intractable 
+Please note that to arrive to our final product and algorithm, we had to throw out plenty of ideas and hundreds of lines of code. A systematic regression analysis that we tweaked to get some baseline activity proved that no simple combination of feature showed a truly promising $R^2$ on the impressions task. It also proved to be computationally intractable
 
 We settled on the visualization driven method, which aligned closely with visual intuition. The full analysis details, examples, and observations leading to this method are well-documented on the Jupyter notebook. **Please refer to that notebook for more discussion.**
 
 ## Data Preprocessing and Ingestion
 
-We first ingested the geopandas version of the data. Our first improvement on the existing data to improve performance was to partition the dataset into state and counties. 
+We first ingested the geopandas version of the data. Our first improvement on the existing data to improve performance was to partition the dataset into state and counties.
 
-This partitioning proved to be crucial for the performance during data querying during exploration, data querying on the deployed Streamlit application, and the algorithm itself (which uses the county as the background for percentile scoring). 
+This partitioning proved to be crucial for the performance during data querying during exploration, data querying on the deployed Streamlit application, and the algorithm itself (which uses the county as the background for percentile scoring).
 
 Our next processing step, after discussing some simplifying assumptions with Raj and Tanner, was to remove pedestrian, cycleways, and footpaths from the data. In the OSM HIGHWAY column, a non-trivial amount of rows were classified as these. This analysis was restricted to impressions from car observers and traffic only.
 
@@ -34,14 +36,18 @@ Our next processing step, after discussing some simplifying assumptions with Raj
 
 - in the initial EDA, we found that trip volumes, a component of the impressions target variable, are unevenly distributed, with a mean of 5,930, a standard deviation of 9,331, and a median of 3,012. The max value was 232,019. This is backed up intuitively by the visualization.
 
-![](../assets/2025-02-22-23-47-18.png)
+<!-- ![](../assets/2025-02-22-23-47-18.png) -->
+<img src="../assets/dist_trip_vol.png" width="80%" alt="description">
 
 ## Algorithm
 
-Our algorithm for determining impressions involves a kd-tree for range search.
-With a function, we specify all points within a certain radius of an inputted point. We feed county (for partitioning and performance reasons) and radius to our `get_neighbors` function, convert measures of distance to radians, and compute the number of points within the radius (in miles).
+Our algorithm for determining impressions involves a kd-tree for range search, then scoring a location against percentile information of its county.
 
-Running an example for Middleskex County in Massachussets (whoo!), we get 14 points in the dataset within a quarter mile distance from the center of Cambridge Massachussets (provided its latitude and longitude)
+### KD Tree for Range Search
+
+With a function, we return all points contained in the data within a certain radius of an input point (store). We feed the county of the point (for partitioning and performance reasons) and radius to our `get_neighbors` function, convert measures of distance to radians, and compute the number of points within the (fractional miles)radius.
+
+Running an example for Middleskex County in Massachussets, we get 14 points in the dataset within a quarter mile distance from the center of Cambridge Massachussets (provided its latitude and longitude)
 
 For example, our team's favorite cafe, Felipe's in Harvard Square, scored 6 points connecting to 3 different segments in a quarter mile radius. But we still need our score.
 
@@ -51,7 +57,7 @@ After checking a street we know well in Boston, we noticed that for a segment id
 
 So, when match_dir = 1, that `trips_volume` corresponds to the "correct"/"closest" side of the segment to the geometry. Thus, we have to consider `match_dir = 1` when computing impressions. This is a massively simplifying assumption as drivers can certainly look at other sides of the road while waiting at a red light, but are more likely to notice businesses on their side of the road. It will also be easier to pull into same road side businesses for most of the US, barring highways with no nearby exit to the adjacent side of the road.
 
-### Note on identical rows except trip_volume
+### Note on identical rows except `trip_volume`
 
 Since we noticed several instances where rows seemed identical minus the trip volume, which was interesting, we wanted to take those average of those volumes and combined them into one observation.
 
@@ -59,23 +65,28 @@ After an unpacking of the geom data, we realized we could not dedupe as these we
 
 ### Zooming In on an Example:
 
-<!-- ![](../assets/2025-02-23-01-38-37.png) -->
-<img src="../assets/2025-02-23-01-38-37.png width="80%" alt="description">
+For example, when we zoom in on this provided store location (black dot) in Harvard Square, and filter for `match_id = 1`, we get segments that are on the correct side of the street to get impressions facing the storefront. In real life, those segments do have a direct line of sight to that store location, verifying our visual intuition from the map visualization:
 
-For example, when we zoom in on this provided store location (black dot) in Harvard Square, and filter for `match_id = 1`, we get segments that are on the correct side of the street to get impressions facing the storefront. In real life, those segments do have a direct line of sight to that store location.
+<!-- ![](../assets/2025-02-23-01-38-37.png) -->
+<img src="../assets/2025-02-23-01-38-37.png" width="80%" alt="description">
+
+### Crux of the Algorithm - the Impressions Calculation
+
+We can answer the **impressions** question posed by the team by taking the mean of trip volumes for all nearest neighbors (computed by our KD Tree based function). 
+
+We also want to normalize our data to return a score between 0 and 1, which we want to rank against impressions in the backdrop of the proposed store's own county.
+
+We do the final normalization step by aggregating the 
 
 ### The "County Percentile" Heuristic
 
-Counties are a natural demographic and political divisions, as well as useful data partitions. If someone is looking for a future shop location, they will likely want to stay within a certain county. 
+Counties are a natural demographic and political divisions, as well as useful data partitions for performance. If someone is looking for a future shop location, they will likely want to stay within a certain county.
 
-Also, oftentimes, financial policies and business incentives set at the county level. For example, Cobb County has a small business incentive program, which will encourage clients to plan their store within its confines. 
-
-We can answer the **impressions** question posed by the team with 
+Also, oftentimes, financial policies and business incentives set at the county level. For example, Cobb County has a small business incentive program, which will encourage clients to plan their store within its confines.
 
 ### Use the pre-made `county` Partitions!
 
 Since we had (in a sense) taken care of "wrong side of the road" impressions with `match_dir = 1`
-
 
 # Other Methods (Which Did Not Work)
 
@@ -100,9 +111,7 @@ Unfortunately, these methods all yielded **terrible** $R^2$ scores, hovering as 
 
 It was clear we had to discard this method and try a new one.
 
-# Limitations 
-
-
+# Limitations
 
 # Future Directions and Ideas:
 
@@ -118,6 +127,6 @@ Graphical Models and Graph Databases:
 
 - Given more time, we would have liked to explore segment connections and relationships with graph relationships. There is an argument to be made that
 
-# Conclusion 
+# Conclusion
 
 Given the time constraint of the hackathon, we believe using a
