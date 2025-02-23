@@ -89,7 +89,7 @@ kernet heat map
 ## Initial EDA 
 
 - in the initial EDA, we found that trip volumes, a component of the impressions target variable, are unevenly distributed:
-![](assets/2025-02-22-23-47-18.png)
+![](../assets/2025-02-22-23-47-18.png)
 
 
 
