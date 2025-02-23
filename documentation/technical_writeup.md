@@ -109,6 +109,7 @@ There are two views in the application.  The first view colors the segments by t
 
 As you can see, the application returns a score for a set of latitudes and longitudes, and also provides an interactive visualization with satellite image overlays for clients.  
 
+As a bonus, our app also works great on mobile! Clients would be able to use it on the go. 
 
 # Future Directions and Ideas:
 
