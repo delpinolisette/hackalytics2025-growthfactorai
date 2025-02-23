@@ -5,6 +5,7 @@
     - [Notes on match\_id](#notes-on-match_id)
     - [Note on identical rows except trip\_volume](#note-on-identical-rows-except-trip_volume)
     - [Zooming In on an Example:](#zooming-in-on-an-example)
+    - [Use the pre-made `county` partitons](#use-the-pre-made-county-partitons)
     - [Point 1:](#point-1)
     - [Point 2:](#point-2)
 - [Other Methods (Which Did Not Work)](#other-methods-which-did-not-work)
@@ -54,6 +55,11 @@ After an unpacking of the geom data, we realized we could not dedupe as these we
 
 For example, when we zoom in on this provided store location (black dot) in Harvard Square, and filter for `match_id = 1`, we get segments that are on the correct side of the street to get impressions facing the storefront. In real life, those segments do have a direct line of sight to that store location. 
 
+### Use the pre-made `county` partitons 
+
+There are time and user performance constraints. Since we had (in a sense) taken care of "wrong side of the road" impressions with match_dir. 
+
+
 ### Point 1: 
 
 - convolution with **each** individual point
@@ -83,45 +89,6 @@ The code (found in systemic_testing.py) also systematically tried different subs
 Unfortunately, these methods all yielded **terrible** $R^2$ scores, hovering as low as ~0.15 for ElasticNet and as high as 0.17 for Linear Regression. 
 
 It was clear we had to discard this method and try a new one. 
-
-<!-- this one is not perfect as the data is masked... 
-removed a few confusing columns. 
-
-also i unrolled the latitude and longitude and we just got the center of the data, since using the rolled up version as a feature would not work
-
-for categorical variables we encoded them automatically 
-
-and tried a variety of regression methods 
-
-measure coefficients and feature importance 
-
-simplifying assumption: take the center of latitude and longitude groups 
-
-we systematically analyze any number and combination of features against the target, which is trips volunme 
-
-these are the results:
-
-* Performs systematic regression analysis on traffic data using multiple models (Linear, LASSO, Ridge, etc.)
-  * Linear Regression - Basic linear model with no regularization
-  * LASSO - L1 regularization, can eliminate features
-  * Ridge - L2 regularization, shrinks feature coefficients
-  * ElasticNet - Combines L1 and L2 regularization
-  * HuberRegressor - Robust to outliers
-  * KNN - Predicts based on nearest neighbors
-  * DecisionTree - Tree-based predictions
-  * RandomForest - Ensemble of trees
-  * GradientBoosting - Sequential tree building
-  * AdaBoost - Focuses on hard-to-predict cases
-* Preprocesses data by encoding categorical variables and scaling numerical features
-* Tests different combinations of features to find best predictors of trip volume
-* Analyzes top performing models and their feature importance
-* Creates detailed reports including model coefficients, R-squared scores, and MSE
-* Saves model coefficients and analysis results to CSV files
-* Uses various validation metrics to evaluate model performance
-* Includes functions to print summaries of the analysis and encoding mappings
-* Avoids certain columns (like IDs and timestamps) that aren't relevant for prediction
-* Handles both categorical and numerical features appropriately for different model types -->
-
 
 # Future Directions and Ideas:
 
