@@ -54,7 +54,7 @@ def systematic_regression(df, target_variable="trip_volume", test_size=0.2, rand
                           max_features=None, min_features=1, alpha_lasso=1.0, alpha_ridge=1.0, 
                           n_estimators=100):
     """
-    System to test regression against trip volume with automatic categorical encoding
+    System to test regression against trip volume with automatic categorical encoding and feature scaling
     """
     excluded_cols = [target_variable, "id", "created_at", "updated_at", "geom", "day_type", 
                     "day_part", "segment_id", "trips_sample_count", "segment_name", "osm_id", 
@@ -80,19 +80,13 @@ def systematic_regression(df, target_variable="trip_volume", test_size=0.2, rand
     # Initialize lists to store results
     results = []
 
-    # Dictionary of models with scaling requirements
+    # Dictionary of models
     models = {
-        'Linear': (LinearRegression(), False),
-        'LASSO': (Lasso(alpha=alpha_lasso), False),
-        'Ridge': (Ridge(alpha=alpha_ridge), False),
-        'ElasticNet': (ElasticNet(alpha=alpha_lasso, l1_ratio=0.5), False),
-        # 'Huber': (HuberRegressor(epsilon=1.35), True),
-        # # 'SVR': (SVR(kernel='rbf'), True),
-        # 'KNN': (KNeighborsRegressor(n_neighbors=5), True),
-        # 'DecisionTree': (DecisionTreeRegressor(max_depth=5), False),
-        # 'RandomForest': (RandomForestRegressor(n_estimators=n_estimators, random_state=42), False),
-        # 'GradientBoost': (GradientBoostingRegressor(n_estimators=n_estimators, random_state=42), False),
-        # 'AdaBoost': (AdaBoostRegressor(n_estimators=n_estimators, random_state=42), False)
+        'Linear': LinearRegression(),
+        'LASSO': Lasso(alpha=alpha_lasso),
+        'Ridge': Ridge(alpha=alpha_ridge),
+        'ElasticNet': ElasticNet(alpha=alpha_lasso, l1_ratio=0.5),
+        'RandomForest': (RandomForestRegressor(n_estimators=n_estimators, random_state=42), False)
     }
 
     # Test different combinations of features
@@ -105,9 +99,11 @@ def systematic_regression(df, target_variable="trip_volume", test_size=0.2, rand
             X_train_feat = X_train[list(feature_combination)]
             X_test_feat = X_test[list(feature_combination)]
             
+            # Scale features
             X_train_scaled = scaler.fit_transform(X_train_feat)
             X_test_scaled = scaler.transform(X_test_feat)
             
+            # Convert back to DataFrame to maintain column names
             X_train_scaled = pd.DataFrame(X_train_scaled, columns=X_train_feat.columns)
             X_test_scaled = pd.DataFrame(X_test_scaled, columns=X_test_feat.columns)
 
@@ -115,14 +111,12 @@ def systematic_regression(df, target_variable="trip_volume", test_size=0.2, rand
             num_features = [f for f in feature_combination if f in numerical_cols]
 
             model_results = {}
-            for model_name, (model, needs_scaling) in models.items():
+            for model_name, model in models.items():
                 try:
-                    X_train_use = X_train_scaled if needs_scaling else X_train_feat
-                    X_test_use = X_test_scaled if needs_scaling else X_test_feat
-                    
-                    model.fit(X_train_use, y_train)
-                    y_pred_train = model.predict(X_train_use)
-                    y_pred_test = model.predict(X_test_use)
+                    # Use scaled data for all models
+                    model.fit(X_train_scaled, y_train)
+                    y_pred_train = model.predict(X_train_scaled)
+                    y_pred_test = model.predict(X_test_scaled)
 
                     train_r2 = r2_score(y_train, y_pred_train)
                     test_r2 = r2_score(y_test, y_pred_test)
@@ -132,10 +126,11 @@ def systematic_regression(df, target_variable="trip_volume", test_size=0.2, rand
                     train_adj_r2 = 1 - (1 - train_r2) * (len(y_train) - 1) / (len(y_train) - len(feature_combination) - 1)
                     test_adj_r2 = 1 - (1 - test_r2) * (len(y_test) - 1) / (len(y_test) - len(feature_combination) - 1)
 
-                    coef_dict = dict(zip(feature_combination,
-                                         model.coef_ if hasattr(model, 'coef_') else
-                                         model.feature_importances_ if hasattr(model, 'feature_importances_') else
-                                         [np.nan] * len(feature_combination)))
+                    # Store scaled coefficients
+                    coef_dict = dict(zip(feature_combination, 
+                                       model.coef_ if hasattr(model, 'coef_') else
+                                       model.feature_importances_ if hasattr(model, 'feature_importances_') else
+                                       [np.nan] * len(feature_combination)))
 
                     model_results[model_name] = {
                         'train_r2': train_r2,
@@ -148,8 +143,7 @@ def systematic_regression(df, target_variable="trip_volume", test_size=0.2, rand
                         'intercept': model.intercept_ if hasattr(model, 'intercept_') else None
                     }
                 except Exception as e:
-                    print(
-                        f"Warning: {model_name} failed with features {feature_combination}. Error: {str(e)}")
+                    print(f"Warning: {model_name} failed with features {feature_combination}. Error: {str(e)}")
                     continue
 
             results.append({
