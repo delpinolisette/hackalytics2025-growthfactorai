@@ -7,6 +7,9 @@
 
 county_data/*
 
+*.parquet
+traffic_data_condensed.parquet
+
 *.csv
 processed_traffic_data.csv
 
