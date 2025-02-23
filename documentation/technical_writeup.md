@@ -43,15 +43,11 @@ In the initial EDA we found that trip volumes, a component of the impressions ta
 
 ## Algorithm
 
-Our algorithm for determining impressions involves a kd-tree for range search, then scoring a location against percentile information of its county.
+Our algorithm for determining impressions involves a kd-tree for range search to obtain nearby segments. Once the nearby segments are obtained, we then select segments with correct orientation, and aggregate their trip volumes to obtain an aggregate trip volumne score.  We then use calibrated thresholds based on county data to obtain an impression score between 0 and 1.
 
 ### KD Tree for Range Search
 
 The first step of the algorithm is to retrieve all points contained within a certain radius of an input point (store). We use the haversine as our distance metric.  The KD tree reduces the search time from linear to logarithmic complexity.  To further optimize performance, we restrict the search to only points within the same county.  
-
-Running an example for Middlesex County in Massachusetts, we get 14 points in the dataset within a quarter mile distance from the center of Cambridge Massachusetts (provided its latitude and longitude)
-
-For example, our team's favorite cafe, Felipe's in Harvard Square, scored 6 points connecting to 3 different segments in a quarter mile radius. But we still need our impressions score!
 
 ### Notes on `match_id`
 
@@ -63,7 +59,7 @@ So, when match_dir = 1, that `trips_volume` corresponds to the "correct"/"closes
 
 Since we noticed several instances where rows seemed identical minus the trip volume, which was interesting, we wanted to take those average of those volumes and combined them into one observation.
 
-After an unpacking of the geom data, we realized we could not dedupe as these were distinct geometries tied to distinct trip volumes.
+After an unpacking of the geom data, we realized we could not dedupe as these were distinct geometries tied to distinct trip volumes. However, these distinct geometries were sometimes tied to the same Open Street Map id, which was curious, one such example occuring over 200 times.
 
 ### Zooming In on an Example:
 
@@ -103,7 +99,9 @@ Since we had (in a sense) taken care of "wrong side of the road" impressions wit
 
 # Application
 
-The application uses Kernel Density Estimation to assign colors to the areas depending on volume of points and segments nearby:
+The application has user settings of state, county, and optional latitude and longitude pair to compute an impression score for. Since trip volume is a critical part of the impression calculation, the focus of this application is visualizing trip volume.  
+
+There are two views in the application.  The first view colors the segments by trip volume, with the color scale on the log scale, with a gradient color scheme. The trip volume of segments can easily be compared in this first view. The second view uses kernel density estimation to color areas around the segments.  
 
 
 <img src="../assets/kernel_density_heatmap.png" width="80%" alt="description">
@@ -111,42 +109,16 @@ The application uses Kernel Density Estimation to assign colors to the areas dep
 
 As you can see, the application returns a score for a set of latitudes and longitudes, and also provides an interactive visualization with satellite image overlays for clients.  
 
-# Other Methods (Which Did Not Work)
-
-## Systematic Regression Analysis
-
-We originally brainstormed a variety of methods, attacking the **impressions** problem by getting intuition both through visual methods and through statistical methods.
-
-To start, we ran a systematic regression analysis, where the target was trip volumes. We tried Linear, LASSO, Ridge, ElasticNet, and even K Nearest Neighbors regression (this made sense as the data had a natural "radius" aspect to it). Also, all the data was scaled as it had massively different proportions.
-
-This required the encoding of categorical variables, taking the **center** of the geometries to make prediction easier, and dropping several variables:
-
-```python
-    excluded_cols = [target_variable, "id", "created_at", "updated_at", "geom", "day_type",
-                    "day_part", "segment_id", "trips_sample_count", "segment_name", "osm_id",
-                    "trips_sample_count_masked", "trips_volume_masked", "vmt"]
-    feature_cols = [col for col in df.columns if col not in excluded_cols]
-```
-
-The code (found in systemic_testing.py) also systematically tried different subset of the set of features and recorded model performance on these ($R^2$, MSE, Feature Importance for random forest and decision tree methods). None of the subset of values trialed, even the ones that looked particularly promising, combined, yielded good results.
-
-Unfortunately, these methods all yielded **terrible** $R^2$ scores, hovering as low as ~0.15 for ElasticNet and as high as 0.17 for Linear Regression.
-
-It was clear we had to discard this method and try a new one.
-
 
 # Future Directions and Ideas:
 
 Parzen Window/density estimation
-- We would like to refactor the aggregation of trip volumes under our given constraints to use Parzen Window/density estimation.
+- We would like to refactor the aggregation of trip volumes under our given constraints to use Parzen Window/density estimation, rather than a simple average.
 
-Kernel Heat Map or Gaussian Blurring:
-
-- We would like to experiment with Gaussian Blurring as the aggregator for trip volumes given a store location.
 
 Graphical Models and Graph Databases:
 
-- Given more time, we would have liked to explore segment connections and relationships with graph relationships. There is an argument to be made that
+- Given more time, we would have liked to explore segment connections and relationships with graph relationships. Perhaps tools such as graph neural networks or community detection algorithms may be useful in this context.
 
 # Testing/Validation of our Approach
 
