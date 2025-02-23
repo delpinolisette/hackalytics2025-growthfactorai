@@ -20,7 +20,7 @@
 
 ## Note on Final Product
 
-Please note that to arrive to our final product and algorithm, we had to throw out plenty of ideas and hundreds of lines of code. A systematic regression analysis that we tweaked to get some baseline activity proved that no simple combination of feature showed a truly promising $R^2$ on the impressions task. It also proved to be computationally intractable
+Please note that to arrive to our final product and algorithm, we had to throw out plenty of ideas and hundreds of lines of code. 
 
 We settled on the visualization driven method, which aligned closely with visual intuition. The full analysis details, examples, and observations leading to this method are well-documented on the Jupyter notebook. **Please refer to that notebook for more discussion.**
 
