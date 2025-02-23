@@ -24,7 +24,7 @@ Please note that to arrive to our final product and algorithm, we had to throw o
 
 We settled on the visualization driven method, which aligned closely with visual intuition. The full analysis details, examples, and observations leading to this method are well-documented on the Jupyter notebook. **Please refer to that notebook for more discussion.**
 
-We also created a deployed Streamlit application to visualize visibility and impressions, which takes in a pair of coordinates or geometries and returns both a score and a map of the location, neighboring points, and color-graded (by Kernel Density Estimation of nearby segments) intensities for usability/explorability. You can watch or experience the application demo and read more about it in our [application section](#application).
+We also created a deployed Streamlit application, which allows the user to input a pair of coordinates; returns the score, and visualizes the trip volumes on a map, color-graded (by Kernel Density Estimation of nearby segments) intensities for usability/explorability. You can watch or experience the application demo and read more about it in our [application section](#application).
 
 ## Data Preprocessing and Ingestion
 
