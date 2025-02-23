@@ -5,6 +5,11 @@
 # gitignore template for Jupyter Notebooks
 # website: http://jupyter.org/
 
+county_data/*
+
+*.csv
+processed_traffic_data.csv
+
 *.gz
 traffic_data_sample.csv/*
 
