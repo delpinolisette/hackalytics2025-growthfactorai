@@ -9,3 +9,5 @@ Please find our working notes and technical writeup in [Technical Writeup](docum
 This will explain our full work in our final submission Jupyter notebook, which is here :[Final Submission Notebook](Final_Submission_Notebook.ipynb)
 
 We had a lot of fun working on this challenge and hope you will enjoy reading through our findings!
+
+Want to reach out? Please email us at bkurland@sas.upenn.edu or lpino3@gatech.edu. 
