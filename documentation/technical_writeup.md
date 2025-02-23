@@ -4,8 +4,10 @@
 - [convolution method](#convolution-method)
 - [future directions:](#future-directions)
 - [Idea 3: Graphical Neural Net](#idea-3-graphical-neural-net)
-- [Final Idea: Geospatial function](#final-idea-geospatial-function)
-  - [Algorithm](#algorithm)
+- [Final Idea: Geospatial Functionals and Visualization](#final-idea-geospatial-functionals-and-visualization)
+  - [Data Preprocessing and Ingestion](#data-preprocessing-and-ingestion)
+  - [Initial EDA](#initial-eda)
+  - [Algorithm :astronaut:](#algorithm-astronaut)
     - [Point 1:](#point-1)
     - [Point 2:](#point-2)
 
@@ -76,13 +78,22 @@ kernet heat map
 # Idea 3: Graphical Neural Net
 
 
-# Final Idea: Geospatial function
+# Final Idea: Geospatial Functionals and Visualization
 
+
+## Data Preprocessing and Ingestion
 - ingest.py function to ingest 
 - our first speedup was reading geopandas file and paritioning it into each state and county to make the visualization easier to search for its respective 
-- our next processing step was to 
+- our next processing step was to remove PEDESTRIAN, cycle, and footwys from observations according to the HIGHWAY column, as they made up a non trivial amount of rows. This analysis was restricted to impressions from car observers and traffic only. 
 
-## Algorithm 
+## Initial EDA 
+
+- in the initial EDA, we found that trip volumes, a component of the impressions target variable, are unevenly distributed:
+![](../assets/2025-02-22-23-47-18.png)
+
+
+
+## Algorithm :astronaut:
 
 ### Point 1: 
 
