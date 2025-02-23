@@ -1,0 +1,1 @@
+Our team's working notes and solution for the GrowthFactorAI challenge
