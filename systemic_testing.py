@@ -12,6 +12,8 @@ from sklearn.preprocessing import StandardScaler
 from itertools import combinations
 import warnings
 warnings.filterwarnings('ignore')
+from sklearn.neighbors import KNeighborsRegressor
+
 
 
 def preprocess_data(df, target_variable="trip_volume"):
@@ -82,11 +84,12 @@ def systematic_regression(df, target_variable="trip_volume", test_size=0.2, rand
 
     # Dictionary of models
     models = {
-        'Linear': LinearRegression(),
-        'LASSO': Lasso(alpha=alpha_lasso),
-        'Ridge': Ridge(alpha=alpha_ridge),
-        'ElasticNet': ElasticNet(alpha=alpha_lasso, l1_ratio=0.5),
-        'RandomForest': (RandomForestRegressor(n_estimators=n_estimators, random_state=42), False)
+        # 'Linear': LinearRegression(),
+        # 'LASSO': Lasso(alpha=alpha_lasso),
+        # 'Ridge': Ridge(alpha=alpha_ridge),
+        # 'ElasticNet': ElasticNet(alpha=alpha_lasso, l1_ratio=0.5),
+        # 'RandomForest': RandomForestRegressor(n_estimators=n_estimators, random_state=42),
+        'KNN': KNeighborsRegressor(n_neighbors=2)
     }
 
     # Test different combinations of features
@@ -128,9 +131,9 @@ def systematic_regression(df, target_variable="trip_volume", test_size=0.2, rand
 
                     # Store scaled coefficients
                     coef_dict = dict(zip(feature_combination, 
-                                       model.coef_ if hasattr(model, 'coef_') else
-                                       model.feature_importances_ if hasattr(model, 'feature_importances_') else
-                                       [np.nan] * len(feature_combination)))
+                        model.coef_ if hasattr(model, 'coef_') else
+                        model.feature_importances_ if hasattr(model, 'feature_importances_') else
+                        [1/len(feature_combination)] * len(feature_combination)))  # Default weights for KNN
 
                     model_results[model_name] = {
                         'train_r2': train_r2,
@@ -142,6 +145,8 @@ def systematic_regression(df, target_variable="trip_volume", test_size=0.2, rand
                         'coefficients': coef_dict,
                         'intercept': model.intercept_ if hasattr(model, 'intercept_') else None
                     }
+                    print(model_name)
+                    print(model_results)
                 except Exception as e:
                     print(f"Warning: {model_name} failed with features {feature_combination}. Error: {str(e)}")
                     continue
