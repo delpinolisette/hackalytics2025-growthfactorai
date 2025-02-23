@@ -5,6 +5,8 @@
 # gitignore template for Jupyter Notebooks
 # website: http://jupyter.org/
 
+*.xls
+
 county_data/*
 
 *.parquet
